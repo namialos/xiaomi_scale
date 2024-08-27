@@ -22,6 +22,8 @@ abstract class MiScaleDevice {
   /// Parse the raw advertisement data to obtain a [MiScaleData] instance
   MiScaleData? parseScaleData(Uint8List data);
 
+  MiScaleData? parseMiScaleData(Uint8List data);
+
   /// Constructs an instance of an extending [MiScaleDevice] class.
   ///
   /// Returns `null` if [device] has no matching class for its device type.
