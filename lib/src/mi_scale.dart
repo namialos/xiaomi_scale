@@ -6,7 +6,10 @@ import 'model/device/mi_scale_device.dart';
 import 'model/mi_scale_data.dart';
 import 'model/mi_scale_measurement.dart';
 
-final Uuid bodyCompositionService = Uuid([0x18, 0x1B]);
+final List<Uuid> bodyCompositionService = [
+  Uuid([0x18, 0x1D]),
+  Uuid([0x18, 0x1B])
+];
 
 class MiScale {
   //Internal singleton instance
@@ -116,8 +119,10 @@ class MiScale {
           // Stop if it's not a known scale device
           if (scaleDevice == null) return;
           // Parse scale data
-          final data =
-              scaleDevice.parseScaleData(device.serviceData.values.first);
+          final data = device.name == 'MI SCALE2'
+              ? scaleDevice.parseMiScaleData(device.serviceData.values.first)
+              : scaleDevice.parseScaleData(device.serviceData.values.first);
+
           if (data == null) return;
           // Emit data
           controller.add(data);
@@ -133,7 +138,7 @@ class MiScale {
 
   Stream<DiscoveredDevice> scanForDevices() {
     return _ble.scanForDevices(
-      withServices: [bodyCompositionService],
+      withServices: bodyCompositionService,
       scanMode: ScanMode.lowLatency,
     );
   }
