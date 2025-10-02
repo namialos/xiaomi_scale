@@ -16,11 +16,17 @@ class MiScaleDeviceV2 extends MiScaleDevice {
     return MiScaleDeviceV2._parseScaleData(id, data);
   }
 
+  @override
+  MiScaleData? parseMiScaleData(Uint8List data) {
+    return MiScaleDeviceV2._parseMiScaleData(id, data);
+  }
+
   /// Determine whether this class matches the device type of the given device
   static bool matchesDeviceType(DiscoveredDevice device) {
-    return device.name == 'MIBFS' &&
+    return (device.name == 'MIBFS' || device.name == 'MI SCALE2') &&
         device.serviceData.length == 1 &&
-        device.serviceData.values.first.length == 13;
+        (device.serviceData.values.first.length == 13 ||
+            device.serviceData.values.first.length == 10);
   }
 
   static MiScaleData? _parseScaleData(String deviceId, Uint8List data) {
@@ -49,6 +55,51 @@ class MiScaleDeviceV2 extends MiScaleDevice {
         DateTime.utc(year, month, day, hour, minute, seconds);
     // Parse weight
     var weight = byteData.getUint16(11, Endian.little).toDouble();
+    if (unit == MiScaleUnit.LBS) {
+      weight /= 100;
+    } else if (unit == MiScaleUnit.KG) {
+      weight /= 200;
+    }
+    // Return new scale data
+    return MiScaleData(
+      deviceId: deviceId,
+      measurementComplete: measurementComplete,
+      weightStabilized: weightStabilized,
+      weightRemoved: weightRemoved,
+      unit: unit,
+      dateTime: measurementTime,
+      weight: weight,
+      impedance: impedance,
+    );
+  }
+
+  static MiScaleData? _parseMiScaleData(String deviceId, Uint8List data) {
+    if (data.length != 10) return null;
+    // Prepare data
+    final byteData = data.buffer.asByteData();
+    // Parse flags
+    final measurementComplete = data[1] & (0x01 << 1) != 0;
+    final weightStabilized = data[1] & (0x01 << 5) != 0;
+    final weightRemoved = data[1] & (0x01 << 7) != 0;
+
+    int? impedance = 0;
+    // if (measurementComplete) {
+    //   impedance = ((data[10] & 0xFF) << 8) | (data[9] & 0xFF);
+    // }
+
+    final unit = (data[0] & 0x01 != 0) ? MiScaleUnit.LBS : MiScaleUnit.KG;
+    // Parse date
+    final year = ((data[4] & 0xFF) << 8) | (data[3] & 0xFF);
+    // year = byteData.getUint16(2, Endian.little);
+    final month = byteData.getUint8(5);
+    final day = byteData.getUint8(6);
+    final hour = byteData.getUint8(7);
+    final minute = byteData.getUint8(8);
+    final seconds = byteData.getUint8(9);
+    final measurementTime =
+        DateTime.utc(year, month, day, hour, minute, seconds);
+    // Parse weight
+    var weight = byteData.getUint16(1, Endian.little).toDouble();
     if (unit == MiScaleUnit.LBS) {
       weight /= 100;
     } else if (unit == MiScaleUnit.KG) {
